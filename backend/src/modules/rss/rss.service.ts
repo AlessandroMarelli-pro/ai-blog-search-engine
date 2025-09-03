@@ -70,7 +70,7 @@ export class RssService {
 
   private async fetchRssData(url: string, source: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      const enableDebug = process.env.RSS_DEBUG === "1";
+      const enableDebug = process.env.PYTHON_DEBUG === "1";
 
       const pythonProcess = spawn(
         "python3",
@@ -85,7 +85,7 @@ export class RssService {
         {
           env: {
             ...process.env,
-            RSS_DEBUG: enableDebug ? "1" : process.env.RSS_DEBUG || "0",
+            PYTHON_DEBUG: enableDebug ? "1" : process.env.PYTHON_DEBUG || "0",
           },
         }
       );

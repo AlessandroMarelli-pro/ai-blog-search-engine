@@ -1,8 +1,8 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
-import { SearchService } from './search.service';
-import { SearchRequestDto } from './dto/search-request.dto';
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import { SearchRequestDto } from "./dto/search-request.dto";
+import { SearchService } from "./search.service";
 
-@Controller('search')
+@Controller("search")
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
@@ -12,15 +12,15 @@ export class SearchController {
   }
 
   @Get()
-  async searchGet(@Query('q') query: string, @Query('limit') limit?: number) {
-    return await this.searchService.searchBlogPosts({
+  async searchGet(@Query("q") query: string, @Query("limit") limit?: number) {
+    return await this.searchService.searchBlogPostsByVector({
       query,
       limit: limit || 10,
     });
   }
 
-  @Get('health')
+  @Get("health")
   async health() {
-    return { status: 'ok', message: 'Search service is running' };
+    return { status: "ok", message: "Search service is running" };
   }
 }

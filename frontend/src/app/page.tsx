@@ -1,46 +1,22 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { BlogCard, type BlogPost } from "@/components/ui/blog-card";
+import { SearchBar } from "@/components/ui/search-bar";
 import { useState } from "react";
 
-type SearchResult = {
-  id: string;
-  title: string;
-  description?: string | null;
-  url: string;
-  author?: string | null;
-  source?: string | null;
-  tags?: string[];
-  publishedAt?: string | null;
-  score?: number;
-};
-
 export default function HomePage() {
-  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<BlogPost[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3000";
 
-  async function onSearch(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!query.trim()) return;
-
+  async function handleSearch(query: string) {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        `${API_BASE}/search?q=${encodeURIComponent(query)}&limit=10`
+        `${API_BASE}/search?q=${encodeURIComponent(query)}&limit=50`
       );
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
@@ -53,69 +29,73 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-start p-6">
-      <div className="w-full max-w-3xl mt-24">
-        <h1 className="text-4xl font-bold text-center mb-6">
-          Blog Search Tool
-        </h1>
-        <form onSubmit={onSearch} className="flex gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search tech blogs (e.g., machine learning tutorials, TypeScript best practices)"
-          />
-          <Button type="submit" disabled={loading}>
-            {loading ? "Searching..." : "Search"}
-          </Button>
-        </form>
-        {error && <p className="text-red-600 mt-3 text-sm">{error}</p>}
-      </div>
+    <main className="min-h-screen flex flex-col items-center justify-start p-6 relative">
+      {/* Background gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
 
-      <section className="w-full max-w-4xl mt-10 grid gap-4">
-        {results.map((r) => (
-          <Card key={r.id}>
-            <CardHeader>
-              <CardTitle className="text-xl">
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
-                  {r.title}
-                </a>
-              </CardTitle>
-              <CardDescription>{r.source || r.author || r.url}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {r.description && (
-                <p className="text-sm mb-3 text-muted-foreground">
-                  {r.description}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2 items-center">
-                {r.tags?.slice(0, 6).map((t) => (
-                  <Badge key={t} variant="secondary">
-                    {t}
-                  </Badge>
-                ))}
-                {r.publishedAt && (
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {new Date(r.publishedAt).toLocaleDateString()}
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {!loading && results.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            Try searching for "React performance tips" or "Kubernetes
-            tutorials".
+      <div className="relative z-10 w-full max-w-4xl mt-16">
+        {/* Hero section */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold mb-4 gradient-text">
+            Blog Search Tool
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Discover the latest tech insights with AI-powered search across
+            thousands of blog posts
           </p>
-        )}
-      </section>
+        </div>
+
+        {/* Search section */}
+        <div className="glass-effect rounded-2xl p-8 mb-12">
+          <div className="flex justify-center">
+            <SearchBar
+              onSearch={handleSearch}
+              loading={loading}
+              placeholder="Search tech blogs (e.g., machine learning tutorials, TypeScript best practices)"
+            />
+          </div>
+          {error && (
+            <p className="text-red-400 mt-4 text-sm text-center">{error}</p>
+          )}
+        </div>
+
+        {/* Results section */}
+        <section className="space-y-6">
+          {results.length > 0 && (
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-semibold mb-2">
+                Found {results.length} results
+              </h2>
+              <p className="text-muted-foreground">
+                Click on any card to read the full article
+              </p>
+            </div>
+          )}
+
+          <div className="grid gap-6">
+            {results.map((post) => (
+              <div
+                key={post.id}
+                className="glass-effect rounded-xl overflow-hidden"
+              >
+                <BlogCard post={post} />
+              </div>
+            ))}
+          </div>
+
+          {!loading && results.length === 0 && (
+            <div className="text-center py-12">
+              <div className="glass-effect rounded-xl p-8 max-w-md mx-auto">
+                <h3 className="text-xl font-semibold mb-2">Ready to search?</h3>
+                <p className="text-muted-foreground">
+                  Try searching for "React performance tips" or "Kubernetes
+                  tutorials"
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

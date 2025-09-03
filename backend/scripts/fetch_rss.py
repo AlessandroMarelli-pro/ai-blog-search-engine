@@ -15,11 +15,10 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import feedparser
-import requests
 from bs4 import BeautifulSoup
+from embed_text import embed_text
 
 # Embeddings
-from sentence_transformers import SentenceTransformer
 
 # Lazy global model
 _model = None
@@ -28,18 +27,6 @@ _model = None
 def log_debug(enabled: bool, *args):
     if enabled:
         print("[fetch_rss][DEBUG]", *args, file=sys.stderr, flush=True)
-
-
-def get_model(debug: bool = False):
-    global _model
-    if _model is None:
-        t0 = time.time()
-        log_debug(
-            debug, "loading embedding model: sentence-transformers/all-MiniLM-L6-v2 ..."
-        )
-        _model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-        log_debug(debug, f"model loaded in {time.time() - t0:.2f}s")
-    return _model
 
 
 def clean_text(text):
@@ -93,20 +80,6 @@ def extract_tags(title, description):
     return [kw for kw in tech_keywords if kw in text][:5]
 
 
-def embed_text(title: str, description: str, content: str, debug: bool = False):
-    model = get_model(debug)
-    combined = " ".join([t for t in [title, description, content] if t]).strip()
-    if not combined:
-        return None
-    vec = model.encode(combined, normalize_embeddings=True)
-    if debug:
-        log_debug(
-            True,
-            f"embedding dims={len(vec)} range=({float(min(vec)):.4f},{float(max(vec)):.4f})",
-        )
-    return vec.tolist()
-
-
 def fetch_rss_feed(url, source, debug: bool = False):
     try:
         t0 = time.time()
@@ -144,7 +117,7 @@ def fetch_rss_feed(url, source, debug: bool = False):
                 content = clean_text(entry.summary)
 
             tags = extract_tags(title, description)
-            embedding = embed_text(title, description, content, debug)
+            embedding = embed_text([title, description, content], debug)
 
             post = {
                 "title": title,
@@ -182,7 +155,7 @@ def main():
     )
 
     args = parser.parse_args()
-    debug = args.debug or os.environ.get("RSS_DEBUG") == "1"
+    debug = args.debug or os.environ.get("PYTHON_DEBUG") == "1"
 
     posts = fetch_rss_feed(args.url, args.source, debug)
     print(json.dumps(posts, indent=2))

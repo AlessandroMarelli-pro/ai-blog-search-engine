@@ -1,18 +1,21 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Client } from '@elastic/elasticsearch';
+import { Client } from "@elastic/elasticsearch";
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { spawn } from "child_process";
 
 @Injectable()
 export class ElasticsearchService implements OnModuleInit {
+  private readonly logger = new Logger(ElasticsearchService.name);
+
   private client: Client;
-  private readonly indexName = 'blog-posts';
+  private readonly indexName = "blog-posts";
 
   constructor(private configService: ConfigService) {
     this.client = new Client({
-      node: this.configService.get<string>('ELASTICSEARCH_NODE'),
+      node: this.configService.get<string>("ELASTICSEARCH_NODE"),
       auth: {
-        username: this.configService.get<string>('ELASTICSEARCH_USERNAME'),
-        password: this.configService.get<string>('ELASTICSEARCH_PASSWORD'),
+        username: this.configService.get<string>("ELASTICSEARCH_USERNAME"),
+        password: this.configService.get<string>("ELASTICSEARCH_PASSWORD"),
       },
     });
   }
@@ -33,24 +36,29 @@ export class ElasticsearchService implements OnModuleInit {
           body: {
             mappings: {
               properties: {
-                title: { type: 'text', analyzer: 'standard' },
-                description: { type: 'text', analyzer: 'standard' },
-                content: { type: 'text', analyzer: 'standard' },
-                author: { type: 'keyword' },
-                url: { type: 'keyword' },
-                source: { type: 'keyword' },
-                tags: { type: 'keyword' },
-                publishedAt: { type: 'date' },
-                createdAt: { type: 'date' },
+                title: { type: "text", analyzer: "standard" },
+                description: { type: "text", analyzer: "standard" },
+                content: { type: "text", analyzer: "standard" },
+                author: { type: "keyword" },
+                url: { type: "keyword" },
+                source: { type: "keyword" },
+                tags: { type: "keyword" },
+                publishedAt: { type: "date" },
+                createdAt: { type: "date" },
                 // all-MiniLM-L6-v2 => 384 dimensions
-                embedding: { type: 'dense_vector', dims: 384, index: true, similarity: 'cosine' },
+                embedding: {
+                  type: "dense_vector",
+                  dims: 384,
+                  index: true,
+                  similarity: "cosine",
+                },
               },
             },
           } as any,
         });
       }
     } catch (error) {
-      console.error('Error creating ElasticSearch index:', error);
+      console.error("Error creating ElasticSearch index:", error);
     }
   }
 
@@ -73,7 +81,7 @@ export class ElasticsearchService implements OnModuleInit {
         },
       });
     } catch (error) {
-      console.error('Error indexing blog post:', error);
+      console.error("Error indexing blog post:", error);
       throw error;
     }
   }
@@ -86,15 +94,15 @@ export class ElasticsearchService implements OnModuleInit {
           query: {
             multi_match: {
               query: query,
-              fields: ['title^2', 'description^1.5', 'content', 'tags'],
-              type: 'best_fields',
-              fuzziness: 'AUTO',
+              fields: ["title^2", "description^1.5", "content", "tags"],
+              type: "best_fields",
+              fuzziness: "AUTO",
             },
           },
           size: size,
           sort: [
-            { publishedAt: { order: 'desc' } },
-            { _score: { order: 'desc' } },
+            { publishedAt: { order: "desc" } },
+            { _score: { order: "desc" } },
           ],
         } as any,
       });
@@ -105,7 +113,80 @@ export class ElasticsearchService implements OnModuleInit {
         ...hit._source,
       }));
     } catch (error) {
-      console.error('Error searching blog posts:', error);
+      console.error("Error searching blog posts:", error);
+      return [];
+    }
+  }
+
+  async embedText(query: string): Promise<number[]> {
+    return new Promise((resolve, reject) => {
+      const enableDebug = process.env.PYTHON_DEBUG === "1";
+
+      const pythonProcess = spawn(
+        "python3",
+        [
+          "scripts/embed_text.py",
+          "--query",
+          query,
+          ...(enableDebug ? ["--debug"] : []),
+        ],
+        {
+          env: {
+            ...process.env,
+            PYTHON_DEBUG: enableDebug ? "1" : process.env.PYTHON_DEBUG || "0",
+          },
+        }
+      );
+
+      let data = "";
+      let error = "";
+
+      pythonProcess.stdout.on("data", (chunk) => {
+        const text = chunk.toString();
+        if (enableDebug) {
+          this.logger.debug(`[python stdout] ${text.trim()}`);
+        }
+        data += text;
+      });
+
+      pythonProcess.stderr.on("data", (chunk) => {
+        const text = chunk.toString();
+        // Always surface stderr for visibility
+        this.logger.warn(`[python stderr] ${text.trim()}`);
+        error += text;
+      });
+
+      pythonProcess.on("error", (procErr) => {
+        this.logger.error(
+          `Python process error: ${(procErr as Error).message}`
+        );
+        reject(procErr);
+      });
+
+      pythonProcess.on("close", async (code) => {
+        if (code !== 0) {
+          reject(new Error(`Python script failed (exit ${code}): ${error}`));
+          return;
+        }
+
+        try {
+          const embeddings = JSON.parse(data);
+
+          resolve(embeddings);
+        } catch (parseError: any) {
+          this.logger.error(`Failed to parse RSS data: ${parseError.message}`);
+          reject(new Error(`Failed to parse RSS data: ${parseError.message}`));
+        }
+      });
+    });
+  }
+
+  async searchBlogPostsByVector(query: string, size: number = 10) {
+    try {
+      const embeddings = await this.embedText(query);
+      return this.vectorSearch(embeddings, size);
+    } catch (error) {
+      console.error("Error searchBlogPostsByVector:", error);
       return [];
     }
   }
@@ -116,7 +197,7 @@ export class ElasticsearchService implements OnModuleInit {
         index: this.indexName,
         body: {
           knn: {
-            field: 'embedding',
+            field: "embedding",
             query_vector: embedding,
             k: size,
             num_candidates: Math.max(size * 6, 60),
@@ -130,7 +211,7 @@ export class ElasticsearchService implements OnModuleInit {
         ...hit._source,
       }));
     } catch (error) {
-      console.error('Error vector searching blog posts:', error);
+      console.error("Error vector searching blog posts:", error);
       return [];
     }
   }
@@ -142,7 +223,7 @@ export class ElasticsearchService implements OnModuleInit {
         id: id,
       });
     } catch (error) {
-      console.error('Error deleting blog post:', error);
+      console.error("Error deleting blog post:", error);
       throw error;
     }
   }
