@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
 
 type SearchResult = {
   id: string;
@@ -33,7 +39,9 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}&limit=10`);
+      const res = await fetch(
+        `${API_BASE}/search?q=${encodeURIComponent(query)}&limit=10`
+      );
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
       setResults(data.results || []);
@@ -47,21 +55,20 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-start p-6">
       <div className="w-full max-w-3xl mt-24">
-        <h1 className="text-4xl font-bold text-center mb-6">Blog Search Tool</h1>
+        <h1 className="text-4xl font-bold text-center mb-6">
+          Blog Search Tool
+        </h1>
         <form onSubmit={onSearch} className="flex gap-2">
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search tech blogs (e.g., "+
-              "machine learning tutorials, TypeScript best practices)" 
+            placeholder="Search tech blogs (e.g., machine learning tutorials, TypeScript best practices)"
           />
           <Button type="submit" disabled={loading}>
             {loading ? "Searching..." : "Search"}
           </Button>
         </form>
-        {error && (
-          <p className="text-red-600 mt-3 text-sm">{error}</p>
-        )}
+        {error && <p className="text-red-600 mt-3 text-sm">{error}</p>}
       </div>
 
       <section className="w-full max-w-4xl mt-10 grid gap-4">
@@ -69,7 +76,12 @@ export default function HomePage() {
           <Card key={r.id}>
             <CardHeader>
               <CardTitle className="text-xl">
-                <a href={r.url} target="_blank" rel="noreferrer" className="hover:underline">
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:underline"
+                >
                   {r.title}
                 </a>
               </CardTitle>
@@ -77,11 +89,15 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               {r.description && (
-                <p className="text-sm mb-3 text-muted-foreground">{r.description}</p>
+                <p className="text-sm mb-3 text-muted-foreground">
+                  {r.description}
+                </p>
               )}
               <div className="flex flex-wrap gap-2 items-center">
                 {r.tags?.slice(0, 6).map((t) => (
-                  <Badge key={t} variant="secondary">{t}</Badge>
+                  <Badge key={t} variant="secondary">
+                    {t}
+                  </Badge>
                 ))}
                 {r.publishedAt && (
                   <span className="text-xs text-muted-foreground ml-auto">
@@ -95,7 +111,8 @@ export default function HomePage() {
 
         {!loading && results.length === 0 && (
           <p className="text-center text-sm text-muted-foreground mt-6">
-            Try searching for "React performance tips" or "Kubernetes tutorials".
+            Try searching for "React performance tips" or "Kubernetes
+            tutorials".
           </p>
         )}
       </section>
