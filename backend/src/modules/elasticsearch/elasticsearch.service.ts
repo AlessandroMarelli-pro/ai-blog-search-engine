@@ -265,4 +265,110 @@ export class ElasticsearchService implements OnModuleInit {
       throw error;
     }
   }
+
+  async searchBlogPostsSemantic(query: string, size: number = 10) {
+    try {
+      // First, get initial results with broad search
+      const initialResults = await this.searchBlogPosts(query, size * 3);
+
+      if (initialResults.length === 0) {
+        return [];
+      }
+
+      // Save results to temporary file for Python processing
+      const fs = require("fs");
+      const tempFile = `/tmp/search_results_${Date.now()}.json`;
+
+      try {
+        fs.writeFileSync(tempFile, JSON.stringify(initialResults));
+
+        // Call Python semantic search script
+        const semanticResults = await this.runSemanticSearch(query, tempFile);
+
+        // Clean up temp file
+        fs.unlinkSync(tempFile);
+
+        return semanticResults;
+      } catch (error) {
+        this.logger.error(`Error in semantic search: ${error}`);
+        // Fallback to regular search
+        return initialResults.slice(0, size);
+      }
+    } catch (error) {
+      console.error("Error in semantic search:", error);
+      return [];
+    }
+  }
+
+  private async runSemanticSearch(
+    query: string,
+    resultsFile: string
+  ): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      const enableDebug = process.env.PYTHON_DEBUG === "1";
+
+      const pythonProcess = spawn(
+        "python3",
+        [
+          "scripts/semantic_search.py",
+          "--query",
+          query,
+          "--results",
+          resultsFile,
+          ...(enableDebug ? ["--debug"] : []),
+        ],
+        {
+          env: {
+            ...process.env,
+            PYTHON_DEBUG: enableDebug ? "1" : process.env.PYTHON_DEBUG || "0",
+          },
+        }
+      );
+
+      let data = "";
+      let error = "";
+
+      pythonProcess.stdout.on("data", (chunk) => {
+        const text = chunk.toString();
+        if (enableDebug) {
+          this.logger.debug(`[semantic stdout] ${text.trim()}`);
+        }
+        data += text;
+      });
+
+      pythonProcess.stderr.on("data", (chunk) => {
+        const text = chunk.toString();
+        this.logger.warn(`[semantic stderr] ${text.trim()}`);
+        error += text;
+      });
+
+      pythonProcess.on("error", (procErr) => {
+        this.logger.error(
+          `Semantic search process error: ${(procErr as Error).message}`
+        );
+        reject(procErr);
+      });
+
+      pythonProcess.on("close", async (code) => {
+        if (code !== 0) {
+          reject(new Error(`Semantic search failed (exit ${code}): ${error}`));
+          return;
+        }
+
+        try {
+          const result = JSON.parse(data);
+          resolve(result.ranked_results || []);
+        } catch (parseError: any) {
+          this.logger.error(
+            `Failed to parse semantic search results: ${parseError.message}`
+          );
+          reject(
+            new Error(
+              `Failed to parse semantic search results: ${parseError.message}`
+            )
+          );
+        }
+      });
+    });
+  }
 }

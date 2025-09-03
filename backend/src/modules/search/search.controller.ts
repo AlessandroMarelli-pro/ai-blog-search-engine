@@ -13,7 +13,7 @@ export class SearchController {
 
   @Get()
   async searchGet(@Query("q") query: string, @Query("limit") limit?: number) {
-    return await this.searchService.searchBlogPostsByVector({
+    return await this.searchService.searchBlogPosts({
       query,
       limit: limit || 10,
     });
@@ -25,6 +25,17 @@ export class SearchController {
     @Query("limit") limit?: number
   ) {
     return await this.searchService.searchBlogPostsByVector({
+      query,
+      limit: limit || 10,
+    });
+  }
+
+  @Get("semantic")
+  async searchSemantic(
+    @Query("q") query: string,
+    @Query("limit") limit?: number
+  ) {
+    return await this.searchService.searchBlogPostsSemantic({
       query,
       limit: limit || 10,
     });

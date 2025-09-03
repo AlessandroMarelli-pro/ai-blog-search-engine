@@ -8,19 +8,42 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<BlogPost[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [searchType, setSearchType] = useState<string>("text");
+  const [semanticAnalysis, setSemanticAnalysis] = useState<any>(null);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3000";
 
   async function handleSearch(query: string) {
     setLoading(true);
     setError(null);
+    setSemanticAnalysis(null);
+
     try {
+      // Determine if this is a complex query that needs semantic search
+      const isComplexQuery =
+        query.length > 50 ||
+        query.toLowerCase().includes("build") ||
+        query.toLowerCase().includes("create") ||
+        query.toLowerCase().includes("help") ||
+        query.toLowerCase().includes("latest") ||
+        query.toLowerCase().includes("new");
+
+      const searchEndpoint = isComplexQuery ? "semantic" : "";
+      setSearchType(isComplexQuery ? "semantic" : "text");
+
       const res = await fetch(
-        `${API_BASE}/search?q=${encodeURIComponent(query)}&limit=50`
+        `${API_BASE}/search/${searchEndpoint}?q=${encodeURIComponent(query)}&limit=50`
       );
+
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
+
       setResults(data.results || []);
+
+      // Store semantic analysis if available
+      if (data.semantic_analysis) {
+        setSemanticAnalysis(data.semantic_analysis);
+      }
     } catch (err: any) {
       setError(err.message || "Search failed");
     } finally {
@@ -51,13 +74,66 @@ export default function HomePage() {
             <SearchBar
               onSearch={handleSearch}
               loading={loading}
-              placeholder="Search tech blogs (e.g., machine learning tutorials, TypeScript best practices)"
+              placeholder="Try: 'I want to build a software that handles frontend and backend solutions' or 'latest React tutorials'"
             />
           </div>
           {error && (
             <p className="text-red-400 mt-4 text-sm text-center">{error}</p>
           )}
         </div>
+
+        {/* Semantic Analysis */}
+        {semanticAnalysis && (
+          <div className="glass-effect rounded-xl p-6 mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-primary">
+              🧠 Semantic Analysis
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="font-medium">Intent:</p>
+                <p className="text-muted-foreground capitalize">
+                  {semanticAnalysis.intent?.primary_intent || "information"}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium">Confidence:</p>
+                <p className="text-muted-foreground">
+                  {(semanticAnalysis.intent?.confidence * 100).toFixed(0)}%
+                </p>
+              </div>
+              {semanticAnalysis.entities?.companies?.length > 0 && (
+                <div>
+                  <p className="font-medium">Companies:</p>
+                  <p className="text-muted-foreground">
+                    {semanticAnalysis.entities.companies.join(", ")}
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="font-medium">Domains:</p>
+                <p className="text-muted-foreground">
+                  {semanticAnalysis.domains
+                    ?.map((d: any) => {
+                      if (d.domain.startsWith("company_")) {
+                        return `Company: ${d.domain.replace("company_", "")}`;
+                      } else if (d.domain.startsWith("non_tech_")) {
+                        return `Domain: ${d.domain.replace("non_tech_", "")}`;
+                      } else {
+                        return d.domain;
+                      }
+                    })
+                    .join(", ") || "general"}
+                </p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="font-medium">Expanded Query:</p>
+                <p className="text-muted-foreground text-xs">
+                  {semanticAnalysis.expanded_terms?.join(", ") || "none"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Results section */}
         <section className="space-y-6">
@@ -67,6 +143,8 @@ export default function HomePage() {
                 Found {results.length} results
               </h2>
               <p className="text-muted-foreground">
+                Search type:{" "}
+                <span className="text-primary font-medium">{searchType}</span> •
                 Click on any card to read the full article
               </p>
             </div>
@@ -87,10 +165,20 @@ export default function HomePage() {
             <div className="text-center py-12">
               <div className="glass-effect rounded-xl p-8 max-w-md mx-auto">
                 <h3 className="text-xl font-semibold mb-2">Ready to search?</h3>
-                <p className="text-muted-foreground">
-                  Try searching for "React performance tips" or "Kubernetes
-                  tutorials"
+                <p className="text-muted-foreground mb-4">
+                  Try these example queries:
                 </p>
+                <div className="text-left text-sm space-y-2">
+                  <p className="text-primary">
+                    • "I want to build a full-stack app with React and Node.js"
+                  </p>
+                  <p className="text-primary">
+                    • "Latest AI tools for developers"
+                  </p>
+                  <p className="text-primary">
+                    • "Microservices architecture best practices"
+                  </p>
+                </div>
               </div>
             </div>
           )}
