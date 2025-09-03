@@ -21,7 +21,7 @@ A NestJS-based backend for an AI-powered tech blog search engine that collects b
 
 ## Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - Python 3.8+
 - Docker & Docker Compose
 - npm or yarn
@@ -48,6 +48,7 @@ docker-compose up -d
 ```
 
 This will start:
+
 - PostgreSQL on port 5432
 - ElasticSearch on port 9200
 

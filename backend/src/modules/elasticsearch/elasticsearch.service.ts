@@ -92,22 +92,55 @@ export class ElasticsearchService implements OnModuleInit {
         index: this.indexName,
         body: {
           query: {
-            multi_match: {
-              query: query,
-              fields: ["title^2", "description^1.5", "content", "tags"],
-              type: "best_fields",
-              fuzziness: "AUTO",
+            bool: {
+              should: [
+                // Exact phrase match (highest priority)
+                {
+                  multi_match: {
+                    query: query,
+                    fields: ["title^3", "description^2", "content", "tags^2"],
+                    type: "phrase",
+                    boost: 3,
+                  },
+                },
+                // Term matching (medium priority)
+                {
+                  multi_match: {
+                    query: query,
+                    fields: ["title^2", "description^1.5", "content", "tags"],
+                    type: "best_fields",
+                    fuzziness: "AUTO",
+                    boost: 1,
+                  },
+                },
+                // Partial matching (lower priority)
+                {
+                  multi_match: {
+                    query: query,
+                    fields: ["title^1.5", "description", "content", "tags"],
+                    type: "most_fields",
+                    boost: 0.5,
+                  },
+                },
+              ],
+              minimum_should_match: 1,
             },
           },
-          size: size,
+          size: size * 2, // Get more results to filter by score
           sort: [
-            { publishedAt: { order: "desc" } },
             { _score: { order: "desc" } },
+            { publishedAt: { order: "desc" } },
           ],
+          min_score: 13, // Increased minimum score threshold for better relevance
         } as any,
       });
 
-      return response.hits.hits.map((hit: any) => ({
+      // Filter and limit results
+      const hits = response.hits.hits
+        .filter((hit: any) => hit._score >= 3.0)
+        .slice(0, size);
+
+      return hits.map((hit: any) => ({
         id: hit._id,
         score: hit._score,
         ...hit._source,
@@ -202,6 +235,10 @@ export class ElasticsearchService implements OnModuleInit {
             k: size,
             num_candidates: Math.max(size * 6, 60),
           },
+          sort: [
+            { _score: { order: "desc" } },
+            { publishedAt: { order: "desc" } },
+          ],
           size,
         } as any,
       });

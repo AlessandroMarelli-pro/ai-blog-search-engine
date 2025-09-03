@@ -19,6 +19,17 @@ export class SearchController {
     });
   }
 
+  @Get("vector")
+  async searchVector(
+    @Query("q") query: string,
+    @Query("limit") limit?: number
+  ) {
+    return await this.searchService.searchBlogPostsByVector({
+      query,
+      limit: limit || 10,
+    });
+  }
+
   @Get("health")
   async health() {
     return { status: "ok", message: "Search service is running" };

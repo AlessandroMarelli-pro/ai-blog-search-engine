@@ -34,22 +34,39 @@ export function BlogCard({ post }: BlogCardProps) {
     });
   };
 
+  const getScoreColor = (score?: number) => {
+    if (!score) return "text-muted-foreground";
+    if (score >= 10) return "text-green-400";
+    if (score >= 5) return "text-yellow-400";
+    return "text-orange-400";
+  };
+
   return (
     <Card className="border-0 bg-transparent shadow-none hover:scale-[1.02] transition-all duration-300">
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl leading-tight">
-          <a
-            href={post.url}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:underline flex items-center gap-2 group"
-          >
-            <span className="group-hover:text-primary transition-colors">
-              {post.title}
-            </span>
-            <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-          </a>
-        </CardTitle>
+        <div className="flex items-start justify-between">
+          <CardTitle className="text-xl leading-tight flex-1">
+            <a
+              href={post.url}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:underline flex items-center gap-2 group"
+            >
+              <span className="group-hover:text-primary transition-colors">
+                {post.title}
+              </span>
+              <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </a>
+          </CardTitle>
+          {post.score && (
+            <Badge
+              variant="outline"
+              className={`text-xs ${getScoreColor(post.score)} border-current`}
+            >
+              Score: {post.score.toFixed(1)}
+            </Badge>
+          )}
+        </div>
         <CardDescription className="text-sm">
           {post.source && (
             <span className="font-medium text-primary">{post.source}</span>
