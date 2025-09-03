@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
-import { ElasticsearchService } from '../elasticsearch/elasticsearch.service';
-import { AddRssFeedDto } from './dto/add-rss-feed.dto';
-import { spawn } from 'child_process';
+import { Injectable, Logger } from "@nestjs/common";
+import { spawn } from "child_process";
+import { PrismaService } from "../database/prisma.service";
+import { ElasticsearchService } from "../elasticsearch/elasticsearch.service";
+import { AddRssFeedDto } from "./dto/add-rss-feed.dto";
 
 @Injectable()
 export class RssService {
+  private readonly logger = new Logger(RssService.name);
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly elasticsearchService: ElasticsearchService,
+    private readonly elasticsearchService: ElasticsearchService
   ) {}
 
   async addRssFeed(addRssFeedDto: AddRssFeedDto) {
@@ -19,7 +21,7 @@ export class RssService {
     });
 
     if (existingFeed) {
-      throw new Error('RSS feed already exists');
+      throw new Error("RSS feed already exists");
     }
 
     return await this.prisma.rssFeed.create({
@@ -32,7 +34,7 @@ export class RssService {
 
   async getRssFeeds() {
     return await this.prisma.rssFeed.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -42,7 +44,7 @@ export class RssService {
     });
 
     if (!feed) {
-      throw new Error('RSS feed not found');
+      throw new Error("RSS feed not found");
     }
 
     return await this.fetchRssData(feed.url, feed.name);
@@ -59,7 +61,7 @@ export class RssService {
         const result = await this.fetchRssData(feed.url, feed.name);
         results.push({ feed: feed.name, ...result });
       } catch (error) {
-        results.push({ feed: feed.name, error: error.message });
+        results.push({ feed: feed.name, error: (error as Error).message });
       }
     }
 
@@ -68,41 +70,66 @@ export class RssService {
 
   private async fetchRssData(url: string, source: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      // This will call a Python script to fetch RSS data
-      const pythonProcess = spawn('python3', [
-        'scripts/fetch_rss.py',
-        '--url', url,
-        '--source', source,
-      ]);
+      const enableDebug = process.env.RSS_DEBUG === "1";
 
-      let data = '';
-      let error = '';
+      const pythonProcess = spawn(
+        "python3",
+        [
+          "scripts/fetch_rss.py",
+          "--url",
+          url,
+          "--source",
+          source,
+          ...(enableDebug ? ["--debug"] : []),
+        ],
+        {
+          env: {
+            ...process.env,
+            RSS_DEBUG: enableDebug ? "1" : process.env.RSS_DEBUG || "0",
+          },
+        }
+      );
 
-      pythonProcess.stdout.on('data', (chunk) => {
-        data += chunk.toString();
+      let data = "";
+      let error = "";
+
+      pythonProcess.stdout.on("data", (chunk) => {
+        const text = chunk.toString();
+        if (enableDebug) {
+          this.logger.debug(`[python stdout] ${text.trim()}`);
+        }
+        data += text;
       });
 
-      pythonProcess.stderr.on('data', (chunk) => {
-        error += chunk.toString();
+      pythonProcess.stderr.on("data", (chunk) => {
+        const text = chunk.toString();
+        // Always surface stderr for visibility
+        this.logger.warn(`[python stderr] ${text.trim()}`);
+        error += text;
       });
 
-      pythonProcess.on('close', async (code) => {
+      pythonProcess.on("error", (procErr) => {
+        this.logger.error(
+          `Python process error: ${(procErr as Error).message}`
+        );
+        reject(procErr);
+      });
+
+      pythonProcess.on("close", async (code) => {
         if (code !== 0) {
-          reject(new Error(`Python script failed: ${error}`));
+          reject(new Error(`Python script failed (exit ${code}): ${error}`));
           return;
         }
 
         try {
           const posts = JSON.parse(data);
-          
-          // Save posts to database and index in ElasticSearch
-          const savedPosts = [];
+
+          const savedPosts = [] as any[];
           for (const post of posts) {
             const savedPost = await this.saveBlogPost(post, source);
             savedPosts.push(savedPost);
           }
 
-          // Update feed last fetch time
           await this.prisma.rssFeed.updateMany({
             where: { url },
             data: { lastFetch: new Date() },
@@ -113,7 +140,8 @@ export class RssService {
             postsProcessed: savedPosts.length,
             posts: savedPosts,
           });
-        } catch (parseError) {
+        } catch (parseError: any) {
+          this.logger.error(`Failed to parse RSS data: ${parseError.message}`);
           reject(new Error(`Failed to parse RSS data: ${parseError.message}`));
         }
       });
@@ -121,7 +149,6 @@ export class RssService {
   }
 
   private async saveBlogPost(postData: any, source: string) {
-    // Save to database
     const blogPost = await this.prisma.blogPost.upsert({
       where: { url: postData.url },
       update: {
@@ -129,7 +156,9 @@ export class RssService {
         description: postData.description,
         content: postData.content,
         author: postData.author,
-        publishedAt: postData.publishedAt ? new Date(postData.publishedAt) : null,
+        publishedAt: postData.publishedAt
+          ? new Date(postData.publishedAt)
+          : null,
         tags: postData.tags || [],
       },
       create: {
@@ -139,13 +168,17 @@ export class RssService {
         author: postData.author,
         url: postData.url,
         source,
-        publishedAt: postData.publishedAt ? new Date(postData.publishedAt) : null,
+        publishedAt: postData.publishedAt
+          ? new Date(postData.publishedAt)
+          : null,
         tags: postData.tags || [],
       },
     });
 
-    // Index in ElasticSearch
-    await this.elasticsearchService.indexBlogPost(blogPost);
+    await this.elasticsearchService.indexBlogPost({
+      ...blogPost,
+      embedding: postData.embedding || null,
+    });
 
     return blogPost;
   }

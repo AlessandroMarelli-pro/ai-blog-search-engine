@@ -42,6 +42,8 @@ export class ElasticsearchService implements OnModuleInit {
                 tags: { type: 'keyword' },
                 publishedAt: { type: 'date' },
                 createdAt: { type: 'date' },
+                // all-MiniLM-L6-v2 => 384 dimensions
+                embedding: { type: 'dense_vector', dims: 384, index: true, similarity: 'cosine' },
               },
             },
           } as any,
@@ -67,6 +69,7 @@ export class ElasticsearchService implements OnModuleInit {
           tags: blogPost.tags,
           publishedAt: blogPost.publishedAt,
           createdAt: blogPost.createdAt,
+          embedding: blogPost.embedding || null,
         },
       });
     } catch (error) {
@@ -103,6 +106,31 @@ export class ElasticsearchService implements OnModuleInit {
       }));
     } catch (error) {
       console.error('Error searching blog posts:', error);
+      return [];
+    }
+  }
+
+  async vectorSearch(embedding: number[], size: number = 10) {
+    try {
+      const response = await this.client.search({
+        index: this.indexName,
+        body: {
+          knn: {
+            field: 'embedding',
+            query_vector: embedding,
+            k: size,
+            num_candidates: Math.max(size * 6, 60),
+          },
+        } as any,
+      });
+
+      return response.hits.hits.map((hit: any) => ({
+        id: hit._id,
+        score: hit._score,
+        ...hit._source,
+      }));
+    } catch (error) {
+      console.error('Error vector searching blog posts:', error);
       return [];
     }
   }

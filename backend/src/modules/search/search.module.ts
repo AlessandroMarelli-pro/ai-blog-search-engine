@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { SearchController } from './search.controller';
-import { SearchService } from './search.service';
-import { DatabaseModule } from '../database/database.module';
-import { ElasticsearchModule } from '../elasticsearch/elasticsearch.module';
+import { Module } from "@nestjs/common";
+import { DatabaseModule } from "../database/database.module";
+import { ElasticsearchModule } from "../elasticsearch/elasticsearch.module";
+import { SearchController } from "./search.controller";
+import { SearchService } from "./search.service";
 
 @Module({
   imports: [DatabaseModule, ElasticsearchModule],

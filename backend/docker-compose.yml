@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -26,6 +26,18 @@ services:
       - "9200:9200"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - ai-blog-search-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.1.3
+    container_name: ai-blog-search-kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+    ports:
+      - "5601:5601"
     networks:
       - ai-blog-search-network
 

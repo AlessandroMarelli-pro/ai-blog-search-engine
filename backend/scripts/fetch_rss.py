@@ -6,122 +6,187 @@ Fetches blog posts from RSS feeds and returns them as JSON
 
 import argparse
 import json
+import os
+import re
+import ssl
 import sys
-import requests
+import time
 from datetime import datetime
 from urllib.parse import urlparse
+
 import feedparser
+import requests
 from bs4 import BeautifulSoup
-import re
+
+# Embeddings
+from sentence_transformers import SentenceTransformer
+
+# Lazy global model
+_model = None
+
+
+def log_debug(enabled: bool, *args):
+    if enabled:
+        print("[fetch_rss][DEBUG]", *args, file=sys.stderr, flush=True)
+
+
+def get_model(debug: bool = False):
+    global _model
+    if _model is None:
+        t0 = time.time()
+        log_debug(
+            debug, "loading embedding model: sentence-transformers/all-MiniLM-L6-v2 ..."
+        )
+        _model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        log_debug(debug, f"model loaded in {time.time() - t0:.2f}s")
+    return _model
+
 
 def clean_text(text):
     """Clean HTML tags and normalize text"""
     if not text:
         return ""
-    
-    # Remove HTML tags
-    soup = BeautifulSoup(text, 'html.parser')
+
+    soup = BeautifulSoup(text, "html.parser")
     text = soup.get_text()
-    
-    # Remove extra whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
-    
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def extract_tags(title, description):
-    """Extract potential tags from title and description"""
-    text = f"{title} {description}".lower()
-    
-    # Common tech keywords
-    tech_keywords = [
-        'javascript', 'python', 'react', 'vue', 'angular', 'nodejs', 'typescript',
-        'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'machine learning', 'ai',
-        'database', 'sql', 'nosql', 'mongodb', 'postgresql', 'redis', 'api',
-        'microservices', 'serverless', 'devops', 'git', 'ci/cd', 'testing',
-        'frontend', 'backend', 'fullstack', 'mobile', 'ios', 'android'
-    ]
-    
-    found_tags = []
-    for keyword in tech_keywords:
-        if keyword in text:
-            found_tags.append(keyword)
-    
-    return found_tags[:5]  # Limit to 5 tags
 
-def fetch_rss_feed(url, source):
-    """Fetch and parse RSS feed"""
+def extract_tags(title, description):
+    text = f"{title} {description}".lower()
+    tech_keywords = [
+        "javascript",
+        "python",
+        "react",
+        "vue",
+        "angular",
+        "nodejs",
+        "typescript",
+        "docker",
+        "kubernetes",
+        "aws",
+        "azure",
+        "gcp",
+        "machine learning",
+        "ai",
+        "database",
+        "sql",
+        "nosql",
+        "mongodb",
+        "postgresql",
+        "redis",
+        "api",
+        "microservices",
+        "serverless",
+        "devops",
+        "git",
+        "ci/cd",
+        "testing",
+        "frontend",
+        "backend",
+        "fullstack",
+        "mobile",
+        "ios",
+        "android",
+    ]
+    return [kw for kw in tech_keywords if kw in text][:5]
+
+
+def embed_text(title: str, description: str, content: str, debug: bool = False):
+    model = get_model(debug)
+    combined = " ".join([t for t in [title, description, content] if t]).strip()
+    if not combined:
+        return None
+    vec = model.encode(combined, normalize_embeddings=True)
+    if debug:
+        log_debug(
+            True,
+            f"embedding dims={len(vec)} range=({float(min(vec)):.4f},{float(max(vec)):.4f})",
+        )
+    return vec.tolist()
+
+
+def fetch_rss_feed(url, source, debug: bool = False):
     try:
-        # Parse the RSS feed
+        t0 = time.time()
+        if hasattr(ssl, "_create_unverified_context"):
+            ssl._create_default_https_context = ssl._create_unverified_context
+
+        log_debug(debug, f"parsing feed: {url}")
         feed = feedparser.parse(url)
-        
         if feed.bozo:
             print(f"Error parsing RSS feed: {feed.bozo_exception}", file=sys.stderr)
             return []
-        
+
         posts = []
-        
-        for entry in feed.entries:
-            # Extract basic information
-            title = clean_text(entry.get('title', ''))
-            description = clean_text(entry.get('description', ''))
-            link = entry.get('link', '')
-            
-            # Extract author
-            author = ''
-            if hasattr(entry, 'author'):
+        for i, entry in enumerate(feed.entries):
+            title = clean_text(entry.get("title", ""))
+            description = clean_text(entry.get("description", ""))
+            link = entry.get("link", "")
+
+            author = ""
+            if hasattr(entry, "author"):
                 author = entry.author
-            elif hasattr(entry, 'dc_creator'):
+            elif hasattr(entry, "dc_creator"):
                 author = entry.dc_creator
-            
-            # Extract published date
+
             published_at = None
-            if hasattr(entry, 'published_parsed') and entry.published_parsed:
+            if hasattr(entry, "published_parsed") and entry.published_parsed:
                 published_at = datetime(*entry.published_parsed[:6]).isoformat()
-            elif hasattr(entry, 'updated_parsed') and entry.updated_parsed:
+            elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
                 published_at = datetime(*entry.updated_parsed[:6]).isoformat()
-            
-            # Extract content
+
             content = description
-            if hasattr(entry, 'content') and entry.content:
+            if hasattr(entry, "content") and entry.content:
                 content = clean_text(entry.content[0].value)
-            elif hasattr(entry, 'summary'):
+            elif hasattr(entry, "summary"):
                 content = clean_text(entry.summary)
-            
-            # Extract tags
+
             tags = extract_tags(title, description)
-            
-            # Create post object
+            embedding = embed_text(title, description, content, debug)
+
             post = {
-                'title': title,
-                'description': description,
-                'content': content,
-                'author': author,
-                'url': link,
-                'publishedAt': published_at,
-                'tags': tags,
-                'source': source
+                "title": title,
+                "description": description,
+                "content": content,
+                "author": author,
+                "url": link,
+                "publishedAt": published_at,
+                "tags": tags,
+                "source": source,
+                "embedding": embedding,
             }
-            
             posts.append(post)
-        
+
+            if debug and i < 3:
+                log_debug(
+                    True,
+                    f"sample post[{i}] title='{title[:80]}' embedding={'yes' if embedding else 'no'}",
+                )
+
+        log_debug(debug, f"parsed {len(posts)} posts in {time.time() - t0:.2f}s")
         return posts
-        
+
     except Exception as e:
         print(f"Error fetching RSS feed: {str(e)}", file=sys.stderr)
         return []
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Fetch RSS feed data')
-    parser.add_argument('--url', required=True, help='RSS feed URL')
-    parser.add_argument('--source', required=True, help='Source name')
-    
+    parser = argparse.ArgumentParser(description="Fetch RSS feed data")
+    parser.add_argument("--url", required=True, help="RSS feed URL")
+    parser.add_argument("--source", required=True, help="Source name")
+    parser.add_argument(
+        "--debug", action="store_true", help="Enable verbose debug logs to stderr"
+    )
+
     args = parser.parse_args()
-    
-    # Fetch RSS data
-    posts = fetch_rss_feed(args.url, args.source)
-    
-    # Output as JSON
+    debug = args.debug or os.environ.get("RSS_DEBUG") == "1"
+
+    posts = fetch_rss_feed(args.url, args.source, debug)
     print(json.dumps(posts, indent=2))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
