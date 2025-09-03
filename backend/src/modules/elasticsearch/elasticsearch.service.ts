@@ -202,6 +202,7 @@ export class ElasticsearchService implements OnModuleInit {
             k: size,
             num_candidates: Math.max(size * 6, 60),
           },
+          size,
         } as any,
       });
 
