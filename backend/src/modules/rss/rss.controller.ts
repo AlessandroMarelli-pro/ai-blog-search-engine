@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post } from "@nestjs/common";
 import { AddRssFeedDto } from "./dto/add-rss-feed.dto";
 import { RssService } from "./rss.service";
 
@@ -24,6 +24,11 @@ export class RssController {
   @Post("fetch-all")
   async fetchAllRssFeeds() {
     return await this.rssService.fetchAllRssFeeds();
+  }
+
+  @Delete("feeds/:id")
+  async deleteRssFeed(@Param("id") id: string) {
+    return await this.rssService.deleteRssFeed(id);
   }
 
   @Get("health")

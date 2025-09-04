@@ -151,7 +151,7 @@ export class ElasticsearchService implements OnModuleInit {
     }
   }
 
-  async embedText(query: string): Promise<number[]> {
+  async runEmbedText(query: string): Promise<number[]> {
     return new Promise((resolve, reject) => {
       const enableDebug = process.env.PYTHON_DEBUG === "1";
 
@@ -216,7 +216,7 @@ export class ElasticsearchService implements OnModuleInit {
 
   async searchBlogPostsByVector(query: string, size: number = 10) {
     try {
-      const embeddings = await this.embedText(query);
+      const embeddings = await this.runEmbedText(query);
       return this.vectorSearch(embeddings, size);
     } catch (error) {
       console.error("Error searchBlogPostsByVector:", error);
@@ -262,6 +262,26 @@ export class ElasticsearchService implements OnModuleInit {
       });
     } catch (error) {
       console.error("Error deleting blog post:", error);
+      throw error;
+    }
+  }
+
+  async deleteBlogPostsBySource(source: string) {
+    try {
+      const response = await this.client.deleteByQuery({
+        index: this.indexName,
+        body: {
+          query: {
+            term: {
+              source: source,
+            },
+          },
+        },
+      } as any);
+
+      return response;
+    } catch (error) {
+      console.error("Error deleting blog posts by source:", error);
       throw error;
     }
   }

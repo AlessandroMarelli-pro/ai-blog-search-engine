@@ -38,6 +38,36 @@ export class RssService {
     });
   }
 
+  async deleteRssFeed(id: string) {
+    // First, get the RSS feed to get its name (source)
+    const feed = await this.prisma.rssFeed.findUnique({
+      where: { id },
+    });
+
+    if (!feed) {
+      throw new Error("RSS feed not found");
+    }
+
+    // Delete all blog posts from the database that belong to this RSS feed
+    const deletedPosts = await this.prisma.blogPost.deleteMany({
+      where: { source: feed.name },
+    });
+
+    // Delete all blog posts from Elasticsearch that belong to this RSS feed
+    await this.elasticsearchService.deleteBlogPostsBySource(feed.name);
+
+    // Finally, delete the RSS feed itself
+    const deletedFeed = await this.prisma.rssFeed.delete({
+      where: { id },
+    });
+
+    return {
+      deletedFeed,
+      deletedPostsCount: deletedPosts.count,
+      message: `Successfully deleted RSS feed '${feed.name}' and ${deletedPosts.count} related blog posts`,
+    };
+  }
+
   async fetchRssFeed(id: string) {
     const feed = await this.prisma.rssFeed.findUnique({
       where: { id },
