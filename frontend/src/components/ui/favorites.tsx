@@ -1,13 +1,14 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useUser } from "@auth0/nextjs-auth0";
+import { useState } from "react";
 import { BlogCard, type BlogPost } from "./blog-card";
 import { Button } from "./button";
 import { Card } from "./card";
 
 export function Favorites() {
-  const { isAuthenticated, login, getToken } = useAuth();
+  const { user } = useUser();
+  const isAuthenticated = !!user;
   const [favorites, setFavorites] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -28,22 +29,6 @@ export function Favorites() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchFavorites();
-  }, [isAuthenticated]);
-
-  if (!isAuthenticated) {
-    return (
-      <Card className="p-6">
-        <h2 className="text-2xl font-bold mb-4">Favorites</h2>
-        <p className="text-muted-foreground mb-4">
-          Please log in to view your favorite blog posts.
-        </p>
-        <Button onClick={login}>Log In</Button>
-      </Card>
-    );
-  }
 
   return (
     <Card className="p-6">

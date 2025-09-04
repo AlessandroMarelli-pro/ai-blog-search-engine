@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useUser } from "@auth0/nextjs-auth0";
 import { useState } from "react";
 import { Badge } from "./badge";
 import { Button } from "./button";
@@ -18,7 +18,7 @@ interface UserProfileData {
 }
 
 export function UserProfile() {
-  const { user, isAuthenticated, login, logout, getToken } = useAuth();
+  const { user } = useUser();
   const [profile, setProfile] = useState<UserProfileData>({});
   const [isEditing, setIsEditing] = useState(false);
   const [newTheme, setNewTheme] = useState("");
@@ -89,18 +89,6 @@ export function UserProfile() {
     }));
   };
 
-  if (!isAuthenticated) {
-    return (
-      <Card className="p-6">
-        <h2 className="text-2xl font-bold mb-4">User Profile</h2>
-        <p className="text-muted-foreground mb-4">
-          Please log in to view and manage your profile.
-        </p>
-        <Button onClick={login}>Log In</Button>
-      </Card>
-    );
-  }
-
   return (
     <Card className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -116,18 +104,13 @@ export function UserProfile() {
           ) : (
             <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
           )}
-          <Button variant="outline" onClick={logout}>
-            Log Out
-          </Button>
         </div>
       </div>
 
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1">Email</label>
-          {/*           <p className="text-muted-foreground">{user?.email || "Not set"}</p>
-           */}{" "}
-          <p className="text-muted-foreground">{user || "Not set"}</p>
+          <p className="text-muted-foreground">{user?.email || "Not set"}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

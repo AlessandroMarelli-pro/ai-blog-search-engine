@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
+import { useUser } from "@auth0/nextjs-auth0";
 import { ExternalLink, Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -29,7 +29,8 @@ interface BlogCardProps {
 }
 
 export function BlogCard({ post, showFavoriteButton = true }: BlogCardProps) {
-  const { isAuthenticated, getToken } = useAuth();
+  const { user, error } = useUser();
+  const isAuthenticated = !!user;
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
