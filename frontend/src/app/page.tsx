@@ -66,6 +66,7 @@ export default function HomePage() {
   return (
     <>
       <Navigation />
+
       <main className="min-h-screen flex flex-col items-center justify-start p-6 relative pt-24">
         {/* Background gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
