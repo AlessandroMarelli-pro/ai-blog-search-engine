@@ -34,14 +34,14 @@ export function BlogCard({ post, showFavoriteButton = true }: BlogCardProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const API_BASE = "/api/proxy";
+  const API_BASE = process.env.APP_BASE_URL || "http://localhost:3001";
 
   const checkFavoriteStatus = async () => {
     if (!isAuthenticated) return;
 
     try {
       const response = await fetch(
-        `${API_BASE}/users/favorites/${post.id}/check`
+        `${API_BASE}/api/proxy/users/favorites/${post.id}/check`
       );
       if (response.ok) {
         const data = await response.json();
@@ -58,9 +58,16 @@ export function BlogCard({ post, showFavoriteButton = true }: BlogCardProps) {
     setIsLoading(true);
     try {
       const endpoint = isFavorite ? `${post.id}/remove` : post.id;
-      const response = await fetch(`${API_BASE}/users/favorites/${endpoint}`, {
-        method: "POST",
-      });
+      const response = await fetch(
+        `${API_BASE}/api/proxy/users/favorites/${endpoint}`,
+        {
+          method: "POST",
+          body: JSON.stringify({}),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       if (response.ok) {
         setIsFavorite(!isFavorite);
       }
@@ -116,8 +123,9 @@ export function BlogCard({ post, showFavoriteButton = true }: BlogCardProps) {
                 size="sm"
                 onClick={toggleFavorite}
                 disabled={isLoading}
-                className="p-1 h-auto"
+                className="p-1 h-auto "
               >
+                FAV
                 <Heart
                   className={`h-4 w-4 ${
                     isFavorite

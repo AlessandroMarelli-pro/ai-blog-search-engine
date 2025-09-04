@@ -1,24 +1,28 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BlogCard, type BlogPost } from "./blog-card";
 import { Button } from "./button";
 import { Card } from "./card";
 
 export function Favorites() {
   const { user } = useUser();
+
   const isAuthenticated = !!user;
+  useEffect(() => {
+    fetchFavorites();
+  }, [isAuthenticated]);
   const [favorites, setFavorites] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const API_BASE = "/api/proxy";
+  const API_BASE = process.env.APP_BASE_URL || "http://localhost:3001";
 
   const fetchFavorites = async () => {
     if (!isAuthenticated) return;
 
     try {
-      const response = await fetch(`${API_BASE}/users/favorites`);
+      const response = await fetch(`${API_BASE}/api/proxy/users/favorites`);
       if (response.ok) {
         const data = await response.json();
         setFavorites(data.map((fav: any) => fav.blogPost));

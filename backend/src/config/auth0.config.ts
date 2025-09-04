@@ -9,16 +9,13 @@ export class Auth0Strategy extends PassportStrategy(Strategy, "auth0") {
   constructor(private configService: ConfigService) {
     super({
       secretOrKeyProvider: passportJwtSecret({
-        cache: true,
+        cache: false,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri: `https://${configService.get(
-          "AUTH0_DOMAIN"
-        )}/.well-known/jwks.json`,
+        jwksUri: `${configService.get("AUTH0_DOMAIN")}/.well-known/jwks.json`,
       }),
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      audience: configService.get("AUTH0_AUDIENCE"),
-      issuer: `https://${configService.get("AUTH0_DOMAIN")}/`,
+      issuer: `${configService.get("AUTH0_DOMAIN")}/`,
       algorithms: ["RS256"],
     });
   }

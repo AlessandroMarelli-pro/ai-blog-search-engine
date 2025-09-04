@@ -24,7 +24,7 @@ export function UserProfile() {
   const [newTheme, setNewTheme] = useState("");
   const [newTag, setNewTag] = useState("");
 
-  const API_BASE = "/api/proxy";
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3000";
 
   const fetchProfile = async () => {
     try {
