@@ -2,6 +2,8 @@
 
 import { BlogCard, type BlogPost } from "@/components/ui/blog-card";
 import { SearchBar } from "@/components/ui/search-bar";
+import { SearchHistory } from "@/components/ui/search-history";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 
 export default function HomePage() {
@@ -10,6 +12,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<string>("text");
   const [semanticAnalysis, setSemanticAnalysis] = useState<any>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3000";
 
@@ -51,6 +54,14 @@ export default function HomePage() {
     }
   }
 
+  const handleHistoryClick = () => {
+    setShowHistory(true);
+  };
+
+  const handleHistoryClose = () => {
+    setShowHistory(false);
+  };
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-start p-6 relative">
       {/* Background gradient overlay */}
@@ -73,6 +84,7 @@ export default function HomePage() {
           <div className="flex justify-center">
             <SearchBar
               onSearch={handleSearch}
+              onHistoryClick={handleHistoryClick}
               loading={loading}
               placeholder="Try: 'I want to build a software that handles frontend and backend solutions' or 'latest React tutorials'"
             />
@@ -81,6 +93,14 @@ export default function HomePage() {
             <p className="text-red-400 mt-4 text-sm text-center">{error}</p>
           )}
         </div>
+
+        {/* Search History Modal */}
+        <SearchHistory
+          isOpen={showHistory}
+          onClose={handleHistoryClose}
+          onSearch={handleSearch}
+          apiBase={API_BASE}
+        />
 
         {/* Semantic Analysis */}
         {semanticAnalysis && (
@@ -160,7 +180,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-
+          {loading && <Skeleton className="w-full h-48" />}
           {!loading && results.length === 0 && (
             <div className="text-center py-12">
               <div className="glass-effect rounded-xl p-8 max-w-md mx-auto">

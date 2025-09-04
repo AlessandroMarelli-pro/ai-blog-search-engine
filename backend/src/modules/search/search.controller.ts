@@ -45,4 +45,10 @@ export class SearchController {
   async health() {
     return { status: "ok", message: "Search service is running" };
   }
+
+  // Return the history of searches
+  @Get("history")
+  async getSearchHistory() {
+    return await this.searchService.getSearchHistory();
+  }
 }
