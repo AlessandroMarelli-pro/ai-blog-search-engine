@@ -10,7 +10,7 @@ export class SearchService {
     private readonly elasticsearchService: ElasticsearchService
   ) {}
 
-  async searchBlogPosts(searchRequest: SearchRequestDto) {
+  async searchBlogPosts(searchRequest: SearchRequestDto, userId?: string) {
     const { query, limit = 10 } = searchRequest;
 
     try {
@@ -18,6 +18,7 @@ export class SearchService {
       await this.prisma.searchQuery.create({
         data: {
           query,
+          userId,
         },
       });
 
@@ -45,7 +46,10 @@ export class SearchService {
     }
   }
 
-  async searchBlogPostsByVector(searchRequest: SearchRequestDto) {
+  async searchBlogPostsByVector(
+    searchRequest: SearchRequestDto,
+    userId?: string
+  ) {
     const { query, limit = 10 } = searchRequest;
 
     try {
@@ -53,6 +57,7 @@ export class SearchService {
       await this.prisma.searchQuery.create({
         data: {
           query,
+          userId,
         },
       });
 
@@ -78,7 +83,10 @@ export class SearchService {
     }
   }
 
-  async searchBlogPostsSemantic(searchRequest: SearchRequestDto) {
+  async searchBlogPostsSemantic(
+    searchRequest: SearchRequestDto,
+    userId?: string
+  ) {
     const { query, limit = 10 } = searchRequest;
 
     try {
@@ -86,6 +94,7 @@ export class SearchService {
       await this.prisma.searchQuery.create({
         data: {
           query,
+          userId,
         },
       });
 

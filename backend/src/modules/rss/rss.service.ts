@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { spawn } from "child_process";
 import { PrismaService } from "../database/prisma.service";
 import { ElasticsearchService } from "../elasticsearch/elasticsearch.service";
+import { UserService } from "../user/user.service";
 import { AddRssFeedDto } from "./dto/add-rss-feed.dto";
 
 @Injectable()
@@ -10,11 +11,12 @@ export class RssService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly elasticsearchService: ElasticsearchService
+    private readonly elasticsearchService: ElasticsearchService,
+    private readonly userService: UserService
   ) {}
 
   async addRssFeed(addRssFeedDto: AddRssFeedDto) {
-    const { name, url } = addRssFeedDto;
+    const { name, url, theme } = addRssFeedDto;
 
     const existingFeed = await this.prisma.rssFeed.findUnique({
       where: { url },
@@ -28,6 +30,7 @@ export class RssService {
       data: {
         name,
         url,
+        theme,
       },
     });
   }
@@ -35,6 +38,114 @@ export class RssService {
   async getRssFeeds() {
     return await this.prisma.rssFeed.findMany({
       orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async getRssFeedsByTheme(theme: string) {
+    return await this.prisma.rssFeed.findMany({
+      where: { theme },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async getUserRssFeeds(userId: string) {
+    return await this.prisma.userRssFeed.findMany({
+      where: { userId, isActive: true },
+      include: {
+        rssFeed: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async addUserRssFeed(userId: string, rssFeedId: string) {
+    // Check if RSS feed exists
+    const rssFeed = await this.prisma.rssFeed.findUnique({
+      where: { id: rssFeedId },
+    });
+
+    if (!rssFeed) {
+      throw new Error("RSS feed not found");
+    }
+
+    // Check if user already has this RSS feed
+    const existingUserRssFeed = await this.prisma.userRssFeed.findUnique({
+      where: {
+        userId_rssFeedId: {
+          userId,
+          rssFeedId,
+        },
+      },
+    });
+
+    if (existingUserRssFeed) {
+      // If exists but inactive, activate it
+      if (!existingUserRssFeed.isActive) {
+        return await this.prisma.userRssFeed.update({
+          where: { id: existingUserRssFeed.id },
+          data: { isActive: true },
+          include: { rssFeed: true },
+        });
+      }
+      throw new Error("User already has this RSS feed");
+    }
+
+    return await this.prisma.userRssFeed.create({
+      data: {
+        userId,
+        rssFeedId,
+      },
+      include: {
+        rssFeed: true,
+      },
+    });
+  }
+
+  async removeUserRssFeed(userId: string, rssFeedId: string) {
+    const userRssFeed = await this.prisma.userRssFeed.findUnique({
+      where: {
+        userId_rssFeedId: {
+          userId,
+          rssFeedId,
+        },
+      },
+    });
+
+    if (!userRssFeed) {
+      throw new Error("User RSS feed not found");
+    }
+
+    return await this.prisma.userRssFeed.update({
+      where: { id: userRssFeed.id },
+      data: { isActive: false },
+      include: { rssFeed: true },
+    });
+  }
+
+  async getRecommendedRssFeeds(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.themes.length) {
+      // Return popular feeds if no themes
+      return await this.prisma.rssFeed.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      });
+    }
+
+    // Return feeds matching user themes
+    return await this.prisma.rssFeed.findMany({
+      where: {
+        isActive: true,
+        theme: {
+          in: user.themes,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
     });
   }
 

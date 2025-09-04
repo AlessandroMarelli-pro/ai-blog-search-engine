@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -6,7 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ExternalLink } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { ExternalLink, Heart } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export interface BlogPost {
   id: string;
@@ -22,9 +25,56 @@ export interface BlogPost {
 
 interface BlogCardProps {
   post: BlogPost;
+  showFavoriteButton?: boolean;
 }
 
-export function BlogCard({ post }: BlogCardProps) {
+export function BlogCard({ post, showFavoriteButton = true }: BlogCardProps) {
+  const { isAuthenticated, getToken } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const API_BASE = "/api/proxy";
+
+  const checkFavoriteStatus = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/users/favorites/${post.id}/check`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setIsFavorite(data.isFavorite);
+      }
+    } catch (error) {
+      console.error("Error checking favorite status:", error);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!isAuthenticated) return;
+
+    setIsLoading(true);
+    try {
+      const endpoint = isFavorite ? `${post.id}/remove` : post.id;
+      const response = await fetch(`${API_BASE}/users/favorites/${endpoint}`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        setIsFavorite(!isFavorite);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && showFavoriteButton) {
+      checkFavoriteStatus();
+    }
+  }, [isAuthenticated, post.id]);
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return null;
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -58,14 +108,33 @@ export function BlogCard({ post }: BlogCardProps) {
               <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
             </a>
           </CardTitle>
-          {post.score && (
-            <Badge
-              variant="outline"
-              className={`text-xs ${getScoreColor(post.score)} border-current`}
-            >
-              Score: {post.score.toFixed(1)}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {showFavoriteButton && isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleFavorite}
+                disabled={isLoading}
+                className="p-1 h-auto"
+              >
+                <Heart
+                  className={`h-4 w-4 ${
+                    isFavorite
+                      ? "fill-red-500 text-red-500"
+                      : "text-muted-foreground hover:text-red-500"
+                  }`}
+                />
+              </Button>
+            )}
+            {post.score && (
+              <Badge
+                variant="outline"
+                className={`text-xs ${getScoreColor(post.score)} border-current`}
+              >
+                Score: {post.score.toFixed(1)}
+              </Badge>
+            )}
+          </div>
         </div>
         <CardDescription className="text-sm">
           {post.source && (

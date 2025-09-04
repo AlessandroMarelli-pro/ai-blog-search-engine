@@ -10,6 +10,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  auth0Id   String   @unique // Auth0 user ID
+  email     String   @unique
+  firstName String
+  lastName  String
+  age       Int?
+  position  String?
+  themes    String[] // Array of user's preferred themes
+  tags      String[] // Array of user's preferred tags
+  language  String   @default("en")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userRssFeeds UserRssFeed[]
+  favorites    Favorite[]
+  searchHistory SearchQuery[]
+
+  @@map("users")
+}
+
 model BlogPost {
   id          String   @id @default(cuid())
   title       String
@@ -23,6 +45,9 @@ model BlogPost {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Relations
+  favorites Favorite[]
+
   @@map("blog_posts")
 }
 
@@ -30,19 +55,57 @@ model RssFeed {
   id        String   @id @default(cuid())
   name      String
   url       String   @unique
+  theme     String?  // Theme/category of the RSS feed
   isActive  Boolean  @default(true)
   lastFetch DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  userRssFeeds UserRssFeed[]
+
   @@map("rss_feeds")
+}
+
+model UserRssFeed {
+  id        String   @id @default(cuid())
+  userId    String
+  rssFeedId String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rssFeed RssFeed @relation(fields: [rssFeedId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, rssFeedId])
+  @@map("user_rss_feeds")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  blogPostId String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, blogPostId])
+  @@map("favorites")
 }
 
 model SearchQuery {
   id        String   @id @default(cuid())
   query     String
   results   Int      @default(0)
+  userId    String?  // Optional: can be null for anonymous searches
   createdAt DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("search_queries")
 }
