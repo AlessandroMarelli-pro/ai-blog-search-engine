@@ -4,8 +4,10 @@ export const initialThemes = [
     nameId: "programming",
     tags: [
       "javascript",
+      "js", // JavaScript
       "python",
       "typescript",
+      "ts", // TypeScript
       "nodejs",
       "software development",
       "software engineering",
@@ -20,15 +22,21 @@ export const initialThemes = [
       "ruby",
       "dart",
       "web development",
+      "webdev", // Web Development
       "data science",
+      "ds", // Data Science
       "mobile development",
       "game development",
       "systems programming",
+      "developer", // role
+      "lead developer", // role
+      "senior developer", // role
+      "principal engineer", // role
     ],
   },
   {
     name: "Frameworks & Libraries",
-    nameId: "frameworks_&libraries",
+    nameId: "frameworks_&_libraries",
     tags: [
       "react",
       "vue",
@@ -51,7 +59,7 @@ export const initialThemes = [
   },
   {
     name: "Cloud & Infrastructure",
-    nameId: "cloud&infrastructure",
+    nameId: "cloud_&_infrastructure",
     tags: [
       "docker",
       "kubernetes",
@@ -73,6 +81,7 @@ export const initialThemes = [
       "compute",
       "storage",
       "networking",
+      "cloud engineer", // role
     ],
   },
   {
@@ -97,6 +106,9 @@ export const initialThemes = [
       "chef",
       "puppet",
       "infrastructure as code",
+      "iac", // Infrastructure as Code
+      "devops engineer", // role
+      "site reliability engineer", // role
     ],
   },
   {
@@ -122,22 +134,28 @@ export const initialThemes = [
   },
   {
     name: "AI & Machine Learning",
-    nameId: "ai&machine_learning",
+    nameId: "ai_&_machine_learning",
     tags: [
       "machine learning",
+      "ml", // Machine Learning
       "ai",
       "deep learning",
+      "dl", // Deep Learning
       "neural network",
       "supervised learning",
       "unsupervised learning",
       "reinforcement learning",
       "natural language processing",
-      "nlp",
+      "nlp", // Natural Language Processing
       "computer vision",
+      "cv", // Computer Vision
       "data science",
       "data analysis",
       "predictive modeling",
       "generative ai",
+      "genai", // Generative AI
+      "data scientist", // role
+      "machine learning engineer", // role
     ],
   },
   {
@@ -154,12 +172,13 @@ export const initialThemes = [
       "cross-platform",
       "native development",
       "app store optimization",
+      "aso", // App Store Optimization
       "monetization",
     ],
   },
   {
     name: "Architecture & Design",
-    nameId: "architecture&_design",
+    nameId: "architecture_&_design",
     tags: [
       "api",
       "microservices",
@@ -176,6 +195,8 @@ export const initialThemes = [
       "scalability",
       "security",
       "resilience",
+      "architect", // role
+      "solutions architect", // role
     ],
   },
   {
@@ -206,6 +227,9 @@ export const initialThemes = [
       "profit margin",
       "networking",
       "roi",
+      "product manager", // role
+      "project manager", // role
+      "scrum master", // role
     ],
   },
   {

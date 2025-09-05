@@ -9,7 +9,7 @@ export class Auth0Strategy extends PassportStrategy(Strategy, "auth0") {
   constructor(private configService: ConfigService) {
     super({
       secretOrKeyProvider: passportJwtSecret({
-        cache: false,
+        cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
         jwksUri: `${configService.get("AUTH0_DOMAIN")}/.well-known/jwks.json`,

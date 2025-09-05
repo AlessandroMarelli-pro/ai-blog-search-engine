@@ -17,7 +17,7 @@ export class RssService {
   ) {}
 
   async addRssFeed(addRssFeedDto: AddRssFeedDto) {
-    const { name, url, themes, tags } = addRssFeedDto;
+    const { name, url, themes = [], tags = [] } = addRssFeedDto;
 
     const existingFeed = await this.prisma.rssFeed.findUnique({
       where: { url },
