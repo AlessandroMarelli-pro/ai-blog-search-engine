@@ -10,9 +10,11 @@ interface SearchBarProps {
   onHistoryClick: () => void;
   loading?: boolean;
   placeholder?: string;
+  otherQuery?: string;
 }
 
 export function SearchBar({
+  otherQuery,
   onSearch,
   onHistoryClick,
   loading = false,
@@ -22,7 +24,7 @@ export function SearchBar({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
+    if (query?.trim()) {
       onSearch(query);
     }
   };
@@ -30,7 +32,7 @@ export function SearchBar({
   return (
     <form onSubmit={handleSubmit} className="flex gap-3 w-full max-w-2xl">
       <Input
-        value={query}
+        value={!query ? otherQuery : query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder || "Search tech blogs..."}
         className="flex-1 h-12 text-base bg-background/50 border-border/50 focus:border-primary/50 transition-all duration-200"

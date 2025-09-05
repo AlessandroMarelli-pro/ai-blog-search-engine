@@ -8,7 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 
 export default function HomePage() {
+  const predefineQueries = [
+    "I want to build a software that handles frontend and backend solutions",
+    "latest React tutorials",
+    "latest AI tools for developers",
+  ];
   const [loading, setLoading] = useState(false);
+  const [otherQuery, setOtherQuery] = useState<string>("");
   const [results, setResults] = useState<BlogPost[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<string>("text");
@@ -87,6 +93,7 @@ export default function HomePage() {
           <div className="glass-effect rounded-2xl p-8 mb-12">
             <div className="flex justify-center">
               <SearchBar
+                otherQuery={otherQuery}
                 onSearch={handleSearch}
                 onHistoryClick={handleHistoryClick}
                 loading={loading}
@@ -195,16 +202,18 @@ export default function HomePage() {
                     Try these example queries:
                   </p>
                   <div className="text-left text-sm space-y-2">
-                    <p className="text-primary">
-                      • "I want to build a full-stack app with React and
-                      Node.js"
-                    </p>
-                    <p className="text-primary">
-                      • "Latest AI tools for developers"
-                    </p>
-                    <p className="text-primary">
-                      • "Microservices architecture best practices"
-                    </p>
+                    {predefineQueries.map((query) => (
+                      <p
+                        key={query}
+                        className="text-primary"
+                        onClick={() => {
+                          setOtherQuery(query);
+                          handleSearch(query);
+                        }}
+                      >
+                        • "{query}"
+                      </p>
+                    ))}
                   </div>
                 </div>
               </div>
