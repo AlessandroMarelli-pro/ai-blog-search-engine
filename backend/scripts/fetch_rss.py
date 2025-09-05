@@ -103,6 +103,7 @@ def fetch_rss_feed(url, source, debug: bool = False):
 
             tagsByTheme = extract_tags_by_theme(title, description, themes)
             embedding = embed_text([title, description, content], debug)
+            nested_tags = [x["tags"] for x in tagsByTheme]
 
             post = {
                 "title": title,
@@ -112,7 +113,7 @@ def fetch_rss_feed(url, source, debug: bool = False):
                 "url": link,
                 "publishedAt": published_at,
                 "themes": [x["theme"] for x in tagsByTheme],
-                "tags": [",".join(x["tags"]) for x in tagsByTheme],
+                "tags": [item for sublist in nested_tags for item in sublist],
                 "source": source,
                 "embedding": embedding,
             }

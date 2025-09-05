@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { RssFeed } from "@prisma/client";
 import { spawn } from "child_process";
 import { PrismaService } from "../database/prisma.service";
 import { ElasticsearchService } from "../elasticsearch/elasticsearch.service";
@@ -16,7 +17,7 @@ export class RssService {
   ) {}
 
   async addRssFeed(addRssFeedDto: AddRssFeedDto) {
-    const { name, url, theme } = addRssFeedDto;
+    const { name, url, themes, tags } = addRssFeedDto;
 
     const existingFeed = await this.prisma.rssFeed.findUnique({
       where: { url },
@@ -30,7 +31,8 @@ export class RssService {
       data: {
         name,
         url,
-        theme,
+        themes,
+        tags,
       },
     });
   }
@@ -43,7 +45,7 @@ export class RssService {
 
   async getRssFeedsByTheme(theme: string) {
     return await this.prisma.rssFeed.findMany({
-      where: { theme },
+      where: { themes: { has: theme } },
       orderBy: { createdAt: "desc" },
     });
   }
@@ -140,8 +142,8 @@ export class RssService {
     return await this.prisma.rssFeed.findMany({
       where: {
         isActive: true,
-        theme: {
-          in: user.themes,
+        themes: {
+          hasSome: user.themes,
         },
       },
       orderBy: { createdAt: "desc" },
@@ -188,7 +190,7 @@ export class RssService {
       throw new Error("RSS feed not found");
     }
 
-    return await this.fetchRssData(feed.url, feed.name);
+    return await this.fetchRssData(feed);
   }
 
   async fetchAllRssFeeds() {
@@ -199,7 +201,7 @@ export class RssService {
     const results = [];
     for (const feed of feeds) {
       try {
-        const result = await this.fetchRssData(feed.url, feed.name);
+        const result = await this.fetchRssData(feed);
         results.push({ feed: feed.name, ...result });
       } catch (error) {
         results.push({ feed: feed.name, error: (error as Error).message });
@@ -209,7 +211,8 @@ export class RssService {
     return results;
   }
 
-  private async fetchRssData(url: string, source: string): Promise<any> {
+  private async fetchRssData(feed: RssFeed): Promise<any> {
+    const { url, name: source } = feed;
     return new Promise((resolve, reject) => {
       const enableDebug = process.env.PYTHON_DEBUG === "1";
 
@@ -264,16 +267,25 @@ export class RssService {
 
         try {
           const posts = JSON.parse(data);
-
           const savedPosts = [] as any[];
           for (const post of posts) {
             const savedPost = await this.saveBlogPost(post, source);
             savedPosts.push(savedPost);
           }
 
+          // Need to add all themes and all tags to the RSS feed
+          const themes = savedPosts.map((post) => post.themes).flat();
+          const tags = savedPosts.map((post) => post.tags).flat();
+          const uniqueThemes = [...new Set(themes.concat(feed.themes || []))];
+          const uniqueTags = [...new Set(tags.concat(feed.tags || []))];
+
           await this.prisma.rssFeed.updateMany({
             where: { url },
-            data: { lastFetch: new Date() },
+            data: {
+              lastFetch: new Date(),
+              themes: uniqueThemes,
+              tags: uniqueTags,
+            },
           });
 
           resolve({
@@ -301,6 +313,7 @@ export class RssService {
           ? new Date(postData.publishedAt)
           : null,
         tags: postData.tags || [],
+        themes: postData.themes || [],
       },
       create: {
         title: postData.title,
@@ -313,6 +326,7 @@ export class RssService {
           ? new Date(postData.publishedAt)
           : null,
         tags: postData.tags || [],
+        themes: postData.themes || [],
       },
     });
 

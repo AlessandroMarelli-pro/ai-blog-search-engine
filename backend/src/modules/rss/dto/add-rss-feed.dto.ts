@@ -1,5 +1,6 @@
 export class AddRssFeedDto {
   name: string;
   url: string;
-  theme?: string;
+  themes?: string[];
+  tags?: string[];
 }
