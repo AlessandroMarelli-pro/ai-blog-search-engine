@@ -41,6 +41,7 @@ model BlogPost {
   url         String   @unique
   publishedAt DateTime?
   source      String   // RSS feed source
+  themes      String[] // Array of themes
   tags        String[] // Array of tags
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -55,7 +56,8 @@ model RssFeed {
   id        String   @id @default(cuid())
   name      String
   url       String   @unique
-  theme     String?  // Theme/category of the RSS feed
+  themes    String[]  // Theme/category of the RSS feed
+  tags      String[]
   isActive  Boolean  @default(true)
   lastFetch DateTime?
   createdAt DateTime @default(now())
@@ -108,4 +110,15 @@ model SearchQuery {
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("search_queries")
+}
+
+// Meant to store the list of themes and associated tags in the DB and not in the code
+model Theme {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  tags      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("themes")
 }

@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 import feedparser
 from bs4 import BeautifulSoup
+from db_service import get_themes_and_tags
 from embed_text import embed_text
 
 # Embeddings
@@ -40,48 +41,32 @@ def clean_text(text):
     return text
 
 
-def extract_tags(title, description):
+def extract_tags_by_theme(title, description, themes: list[tuple[any, ...]]):
+    """
+    For each theme, check if some tags are in the title or the description.
+    If so, add the theme and the matching tags to an array.
+    Return the array at the end.
+    """
+    results = []
     text = f"{title} {description}".lower()
-    tech_keywords = [
-        "javascript",
-        "python",
-        "react",
-        "vue",
-        "angular",
-        "nodejs",
-        "typescript",
-        "docker",
-        "kubernetes",
-        "aws",
-        "azure",
-        "gcp",
-        "machine learning",
-        "ai",
-        "database",
-        "sql",
-        "nosql",
-        "mongodb",
-        "postgresql",
-        "redis",
-        "api",
-        "microservices",
-        "serverless",
-        "devops",
-        "git",
-        "ci/cd",
-        "testing",
-        "frontend",
-        "backend",
-        "fullstack",
-        "mobile",
-        "ios",
-        "android",
-    ]
-    return [kw for kw in tech_keywords if kw in text][:5]
+
+    for theme in themes:
+        theme_name = theme[0]
+        tags = theme[1].split(",")
+        matched_tags = [tag for tag in tags if tag.lower() in text]
+        if matched_tags:
+            results.append(
+                {
+                    "theme": theme_name,
+                    "tags": matched_tags,  # Limit to 5 tags per theme
+                }
+            )
+    return results
 
 
 def fetch_rss_feed(url, source, debug: bool = False):
     try:
+        themes = get_themes_and_tags()
         t0 = time.time()
         if hasattr(ssl, "_create_unverified_context"):
             ssl._create_default_https_context = ssl._create_unverified_context
@@ -116,7 +101,7 @@ def fetch_rss_feed(url, source, debug: bool = False):
             elif hasattr(entry, "summary"):
                 content = clean_text(entry.summary)
 
-            tags = extract_tags(title, description)
+            tagsByTheme = extract_tags_by_theme(title, description, themes)
             embedding = embed_text([title, description, content], debug)
 
             post = {
@@ -126,7 +111,8 @@ def fetch_rss_feed(url, source, debug: bool = False):
                 "author": author,
                 "url": link,
                 "publishedAt": published_at,
-                "tags": tags,
+                "themes": [x["theme"] for x in tagsByTheme],
+                "tags": [",".join(x["tags"]) for x in tagsByTheme],
                 "source": source,
                 "embedding": embedding,
             }
@@ -156,7 +142,6 @@ def main():
 
     args = parser.parse_args()
     debug = args.debug or os.environ.get("PYTHON_DEBUG") == "1"
-
     posts = fetch_rss_feed(args.url, args.source, debug)
     print(json.dumps(posts, indent=2))
 
