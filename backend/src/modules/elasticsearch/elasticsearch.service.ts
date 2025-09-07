@@ -43,6 +43,7 @@ export class ElasticsearchService implements OnModuleInit {
                 url: { type: "keyword" },
                 source: { type: "keyword" },
                 tags: { type: "keyword" },
+                themes: { type: "keyword" },
                 publishedAt: { type: "date" },
                 createdAt: { type: "date" },
                 // all-MiniLM-L6-v2 => 384 dimensions
@@ -75,6 +76,7 @@ export class ElasticsearchService implements OnModuleInit {
           url: blogPost.url,
           source: blogPost.source,
           tags: blogPost.tags,
+          themes: blogPost.themes,
           publishedAt: blogPost.publishedAt,
           createdAt: blogPost.createdAt,
           embedding: blogPost.embedding || null,
@@ -98,7 +100,13 @@ export class ElasticsearchService implements OnModuleInit {
                 {
                   multi_match: {
                     query: query,
-                    fields: ["title^3", "description^2", "content", "tags^2"],
+                    fields: [
+                      "title^3",
+                      "description^2",
+                      "content",
+                      "tags^2",
+                      "themes^2",
+                    ],
                     type: "phrase",
                     boost: 3,
                   },
@@ -107,7 +115,13 @@ export class ElasticsearchService implements OnModuleInit {
                 {
                   multi_match: {
                     query: query,
-                    fields: ["title^2", "description^1.5", "content", "tags"],
+                    fields: [
+                      "title^2",
+                      "description^1.5",
+                      "content",
+                      "tags",
+                      "themes",
+                    ],
                     type: "best_fields",
                     fuzziness: "AUTO",
                     boost: 1,
@@ -117,7 +131,13 @@ export class ElasticsearchService implements OnModuleInit {
                 {
                   multi_match: {
                     query: query,
-                    fields: ["title^1.5", "description", "content", "tags"],
+                    fields: [
+                      "title^1.5",
+                      "description",
+                      "content",
+                      "tags",
+                      "themes",
+                    ],
                     type: "most_fields",
                     boost: 0.5,
                   },
@@ -131,6 +151,7 @@ export class ElasticsearchService implements OnModuleInit {
             { _score: { order: "desc" } },
             { publishedAt: { order: "desc" } },
           ],
+
           min_score: 13, // Increased minimum score threshold for better relevance
         } as any,
       });

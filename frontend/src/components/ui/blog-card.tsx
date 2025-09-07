@@ -19,6 +19,7 @@ export interface BlogPost {
   author?: string | null;
   source?: string | null;
   tags?: string[];
+  themes?: string[];
   publishedAt?: string | null;
   score?: number;
 }
@@ -103,6 +104,17 @@ export function BlogCard({ post, showFavoriteButton = true }: BlogCardProps) {
     <Card className="border-0 bg-transparent shadow-none hover:scale-[1.02] transition-all duration-300">
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
+          {post.themes?.map((theme) => (
+            <Badge
+              key={theme + "theme"}
+              variant="secondary"
+              className="text-xs bg-secondary/50 hover:bg-secondary transition-colors font-bold uppercase "
+            >
+              {theme}
+            </Badge>
+          ))}
+        </div>
+        <div className="flex items-start justify-between">
           <CardTitle className="text-xl leading-tight flex-1">
             <a
               href={post.url}
@@ -164,11 +176,11 @@ export function BlogCard({ post, showFavoriteButton = true }: BlogCardProps) {
         )}
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <div className="flex flex-wrap gap-1.5">
-            {post.tags?.slice(0, 5).map((tag) => (
+            {post.tags?.map((tag, index) => (
               <Badge
-                key={tag}
+                key={tag + "tag" + index}
                 variant="secondary"
-                className="text-xs bg-secondary/50 hover:bg-secondary transition-colors"
+                className="text-xs bg-secondary/50 hover:bg-secondary transition-colors font-bold uppercase "
               >
                 {tag}
               </Badge>

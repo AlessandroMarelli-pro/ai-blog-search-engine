@@ -719,7 +719,7 @@ class SemanticSearchEngine:
 
         # Get embeddings for results
         result_texts = [
-            f"{r.get('title', '')} {r.get('description', '')} {' '.join(r.get('tags', []))}"
+            f"{r.get('title', '')} {r.get('description', '')} {' '.join(r.get('tags', []))} {' '.join(r.get('themes', []))}"
             for r in results
         ]
         result_embeddings = self.model.encode(result_texts, convert_to_tensor=True)

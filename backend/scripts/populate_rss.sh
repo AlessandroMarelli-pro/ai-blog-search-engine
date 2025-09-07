@@ -2,6 +2,12 @@
 curl -X POST http://localhost:3000/rss/feeds \
   -H "Content-Type: application/json" \
   -d '{
+    "name": "Platformatic",
+    "url": "https://blog.platformatic.dev/rss.xml"
+  }'
+curl -X POST http://localhost:3000/rss/feeds \
+  -H "Content-Type: application/json" \
+  -d '{
     "name": "DevTo",
     "url": "https://dev.to/feed"
   }'
